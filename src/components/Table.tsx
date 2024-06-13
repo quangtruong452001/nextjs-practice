@@ -1,5 +1,11 @@
+import {
+  CellContext,
+  getCoreRowModel,
+  useReactTable,
+  flexRender,
+} from '@tanstack/react-table';
 import EditForm from './EditForm';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 export default function Table({
   columns,
@@ -14,9 +20,31 @@ export default function Table({
   handleSearchInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleDelete: (username: string) => void;
 }) {
+  // State to manage modal visibility and the selected user for editing
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
+  const tableColumns = useMemo(() => {
+    return columns.map((column) => ({
+      header: column,
+      accessorKey: column,
+      cell: (props: CellContext<User, any>) => {
+        const row = props.row.original;
+        if (column === 'project') {
+          return String(row[column as keyof typeof row]);
+        }
+        return row[column as keyof typeof row];
+      },
+    }));
+  }, [columns]);
+
+  const table = useReactTable({
+    columns: tableColumns,
+    data: data,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  // Function to handle delete button click
   async function onClickDeleteButton(username: string): Promise<void> {
     await handleDelete(username);
   }
@@ -26,30 +54,31 @@ export default function Table({
       <table className='table table-zebra w-full'>
         {/* head */}
         <thead className='text-base'>
-          <tr>
-            {columns.map((column) => (
-              // <th key={column}>{column}</th>
-              <th key={column}>
-                <input
-                  type='text'
-                  name={column}
-                  placeholder={`Search by ${column}`}
-                  value={searchParams[column]}
-                  onChange={(e) => handleSearchInputChange(e)}
-                />
-              </th>
-            ))}
-          </tr>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((column) => (
+                <th key={column.id}>
+                  <input
+                    type='text'
+                    name={column.id}
+                    placeholder={`Search by ${column.id}`}
+                    value={searchParams[column.id]}
+                    onChange={(e) => handleSearchInputChange(e)}
+                  />
+                </th>
+              ))}
+            </tr>
+          ))}
         </thead>
+
         {/* body */}
+
         <tbody>
-          {data.map((row, rowIndex) => (
+          {table.getRowModel().rows.map((row, rowIndex) => (
             <tr key={rowIndex}>
-              {columns.map((column) => (
-                <td key={column}>
-                  {column === 'project'
-                    ? String(row[column as keyof typeof row])
-                    : row[column as keyof typeof row]}
+              {row.getVisibleCells().map((cell) => (
+                <td key={cell.id}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}
               <td>
@@ -57,7 +86,7 @@ export default function Table({
                   className='btn w-32 h-12 btn-accent '
                   onClick={() => {
                     setIsModalOpen(true);
-                    setSelectedUser(row);
+                    setSelectedUser(row.original);
                   }}
                 >
                   Edit
@@ -66,7 +95,7 @@ export default function Table({
               <td>
                 <button
                   className='btn w-32 h-12 btn-error'
-                  onClick={() => onClickDeleteButton(row.username)}
+                  onClick={() => onClickDeleteButton(row.original.username)}
                 >
                   Delete
                 </button>
@@ -76,6 +105,7 @@ export default function Table({
         </tbody>
       </table>
 
+      {/* Modal for EditForm */}
       {isModalOpen && selectedUser && (
         <div className='fixed z-10 inset-0 overflow-y-auto'>
           <div className='flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0'>
@@ -88,8 +118,7 @@ export default function Table({
             <span
               className='hidden sm:inline-block sm:align-middle sm:h-screen'
               aria-hidden='true'
-            >
-            </span>
+            ></span>
             <div className='inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full'>
               <div className='bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4'>
                 <EditForm
@@ -101,8 +130,6 @@ export default function Table({
           </div>
         </div>
       )}
-
-
     </div>
   );
 }

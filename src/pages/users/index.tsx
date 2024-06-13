@@ -26,19 +26,23 @@ export default function UserPage() {
     activeYn: '',
   });
 
+  // Toggle the visibility of the AddForm component
   const toggleAddForm = () => {
     setShowAddForm((prev) => {
       return !prev;
     });
   };
 
+  // Fetch user data whenever searchParams, userAdded, isDeleted, or userUpdated changes
   useEffect(() => {
     async function fetchData() {
       try {
+        // Build query string from search parameters
         const query = new URLSearchParams(
           Object.entries(searchParams).filter(([, value]) => value !== '')
         ).toString();
 
+        // Fetch data from the API
         const data = await fetch(
           `https://nestjs-practice-production.up.railway.app/users/search?${query}`
         );
@@ -49,6 +53,7 @@ export default function UserPage() {
           users = [users];
         }
 
+        // Set column keys based on the first user object
         if (users.length > 0) {
           setColumnKeys(Object.keys(users[0]));
         }
@@ -61,11 +66,13 @@ export default function UserPage() {
     fetchData();
   }, [searchParams, userAdded, isDeleted, userUpdated]);
 
+  // Handle search input changes
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setSearchParams((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Handle user deletion
   const handleDelete = async (username: string) => {
     try {
       // query parameter username = username
@@ -75,7 +82,7 @@ export default function UserPage() {
           method: 'DELETE',
         }
       );
-
+      // Update the isDeleted state to trigger re-fetching of data
       setIsDeleted((prev) => !prev);
     } catch (error) {
       console.error(error);
